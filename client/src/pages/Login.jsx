@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { apiPost } from "../utils/api";
 
-const data = await apiPost("/auth/login", formData);
+import { apiPost } from "../utils/api";
 
 function Login() {
   const navigate = useNavigate();
@@ -37,26 +36,11 @@ function Login() {
     try {
       setLoading(true);
 
-      const response = await fetch(
-        `${API_URL}/login`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(formData),
-        }
+      const data = await apiPost(
+        "/auth/login",
+        formData
       );
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          data.message || "Login failed."
-        );
-      }
-
-      // Store authentication information
       localStorage.setItem(
         "playsense_token",
         data.token
@@ -68,8 +52,13 @@ function Login() {
       );
 
       navigate("/dashboard");
-    } catch (error) {
-      setError(error.message);
+    } catch (loginError) {
+      console.error("Login error:", loginError);
+
+      setError(
+        loginError?.message ||
+          "Unable to log in. Please try again."
+      );
     } finally {
       setLoading(false);
     }
