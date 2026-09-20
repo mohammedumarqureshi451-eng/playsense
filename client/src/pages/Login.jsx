@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { apiPost } from "../utils/api";
 
-const API_URL = "http://localhost:5000/api/auth";
+const data = await apiPost("/auth/login", formData);
 
 function Login() {
   const navigate = useNavigate();
