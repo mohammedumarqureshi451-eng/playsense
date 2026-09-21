@@ -1,6 +1,13 @@
 import { authFetch } from "./authFetch";
 
-export const apiGet = async (path, options = {}) => {
+/* =========================================================
+   PROTECTED API REQUESTS
+   ========================================================= */
+
+export const apiGet = async (
+  path,
+  options = {}
+) => {
   const { data } = await authFetch(path, {
     ...options,
     method: "GET",
@@ -56,3 +63,30 @@ export const apiDelete = async (
 
   return data;
 };
+
+/* =========================================================
+   PUBLIC API REQUESTS
+   =========================================================
+   
+   Used for endpoints that must work before the user
+   has a JWT, such as login and registration.
+   ========================================================= */
+
+export const apiPostPublic = async (
+  path,
+  payload,
+  options = {}
+) => {
+  const { data } = await authFetch(path, {
+    ...options,
+    method: "POST",
+    skipAuth: true,
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.headers || {}),
+    },
+    body: JSON.stringify(payload),
+  });
+
+  return data;
+}; 

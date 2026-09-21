@@ -6,6 +6,10 @@ const API_URL =
 
 const DEFAULT_TIMEOUT = 10000;
 
+/* =========================================================
+   BUILD API URL
+   ========================================================= */
+
 const buildUrl = (path) => {
   if (!path) {
     return API_URL;
@@ -21,8 +25,13 @@ const buildUrl = (path) => {
   return `${normalizedBase}/${normalizedPath}`;
 };
 
+/* =========================================================
+   PARSE RESPONSE BODY
+   ========================================================= */
+
 const parseResponseBody = async (response) => {
-  const contentType = response.headers.get("content-type") || "";
+  const contentType =
+    response.headers.get("content-type") || "";
 
   if (contentType.includes("application/json")) {
     try {
@@ -40,6 +49,10 @@ const parseResponseBody = async (response) => {
   }
 };
 
+/* =========================================================
+   CREATE API ERROR
+   ========================================================= */
+
 const createApiError = (response, data) => {
   let message = "Something went wrong.";
 
@@ -49,7 +62,10 @@ const createApiError = (response, data) => {
       data.error ||
       data.msg ||
       message;
-  } else if (typeof data === "string" && data.trim()) {
+  } else if (
+    typeof data === "string" &&
+    data.trim()
+  ) {
     message = data;
   } else if (response.statusText) {
     message = response.statusText;
@@ -64,70 +80,150 @@ const createApiError = (response, data) => {
   return error;
 };
 
-export const authFetch = async (path, options = {}) => {
-  const token = getToken();
+/* =========================================================
+   AUTHENTICATED API REQUEST
+   ========================================================= */
 
-  if (!token || isTokenExpired()) {
-    clearAuth();
+export const authFetch = async (
+  path,
+  options = {}
+) => {
+  /*
+   * skipAuth is used by public endpoints such as:
+   *
+   * POST /auth/login
+   * POST /auth/register
+   *
+   * These requests must work before a JWT exists.
+   */
+  const {
+    skipAuth = false,
+    timeout = DEFAULT_TIMEOUT,
+    headers: optionHeaders = {},
+    ...fetchOptions
+  } = options;
 
-    window.dispatchEvent(
-      new Event("playsense:session-expired")
-    );
+  let token = null;
 
-    const error = new Error(
-      "Your session has expired. Please log in again."
-    );
+  /* =======================================================
+     CHECK AUTHENTICATION
+     ======================================================= */
 
-    error.status = 401;
-    error.code = "SESSION_EXPIRED";
+  if (!skipAuth) {
+    token = getToken();
 
-    throw error;
-  }
-
-  const controller = new AbortController();
-
-  const timeoutId = setTimeout(() => {
-    controller.abort();
-  }, options.timeout || DEFAULT_TIMEOUT);
-
-  try {
-    const headers = {
-      Accept: "application/json",
-      ...(options.headers || {}),
-      Authorization: `Bearer ${token}`,
-    };
-
-    const response = await fetch(buildUrl(path), {
-      ...options,
-      headers,
-      signal: controller.signal,
-    });
-
-    const data = await parseResponseBody(response);
-
-    if (response.status === 401) {
+    if (!token || isTokenExpired()) {
       clearAuth();
 
       window.dispatchEvent(
         new Event("playsense:session-expired")
       );
 
-      const error = createApiError(response, data);
+      const error = new Error(
+        "Your session has expired. Please log in again."
+      );
+
+      error.status = 401;
+      error.code = "SESSION_EXPIRED";
+
+      throw error;
+    }
+  }
+
+  /* =======================================================
+     REQUEST TIMEOUT
+     ======================================================= */
+
+  const controller = new AbortController();
+
+  const timeoutId = setTimeout(() => {
+    controller.abort();
+  }, timeout);
+
+  try {
+    /* =====================================================
+       REQUEST HEADERS
+       ===================================================== */
+
+    const headers = {
+      Accept: "application/json",
+      ...optionHeaders,
+    };
+
+    /*
+     * Only attach Authorization when a valid token exists.
+     *
+     * Login/register requests will not receive this header.
+     */
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+
+    /* =====================================================
+       SEND REQUEST
+       ===================================================== */
+
+    const response = await fetch(buildUrl(path), {
+      ...fetchOptions,
+      headers,
+      signal: controller.signal,
+    });
+
+    /* =====================================================
+       PARSE RESPONSE
+       ===================================================== */
+
+    const data = await parseResponseBody(response);
+
+    /* =====================================================
+       HANDLE EXPIRED SESSION
+       ===================================================== */
+
+    /*
+     * Only authenticated requests should trigger the
+     * session-expired behavior.
+     *
+     * Login/register may legitimately return 401/400
+     * because of invalid credentials or validation errors.
+     */
+    if (response.status === 401 && !skipAuth) {
+      clearAuth();
+
+      window.dispatchEvent(
+        new Event("playsense:session-expired")
+      );
+
+      const error = createApiError(
+        response,
+        data
+      );
 
       error.code = "SESSION_EXPIRED";
 
       throw error;
     }
 
+    /* =====================================================
+       HANDLE OTHER API ERRORS
+       ===================================================== */
+
     if (!response.ok) {
       throw createApiError(response, data);
     }
+
+    /* =====================================================
+       SUCCESS
+       ===================================================== */
 
     return {
       data,
       response,
     };
   } catch (error) {
+    /* =====================================================
+       REQUEST TIMEOUT
+       ===================================================== */
+
     if (error?.name === "AbortError") {
       const timeoutError = new Error(
         "The request timed out. Please check your connection and try again."
@@ -138,6 +234,10 @@ export const authFetch = async (path, options = {}) => {
 
       throw timeoutError;
     }
+
+    /* =====================================================
+       NETWORK ERROR
+       ===================================================== */
 
     if (
       error instanceof TypeError &&

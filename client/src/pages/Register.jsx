@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
-import { apiPost } from "../utils/api";
+import { apiPostPublic } from "../utils/api";
 
 function Register() {
   const navigate = useNavigate();
@@ -53,7 +53,7 @@ function Register() {
     try {
       setLoading(true);
 
-      await apiPost("/auth/register", {
+      await apiPostPublic("/auth/register", {
         name: formData.name,
         email: formData.email,
         password: formData.password,
@@ -86,7 +86,9 @@ function Register() {
             PlaySense
           </Link>
 
-          <p>Performance intelligence for athletes.</p>
+          <p>
+            Performance intelligence for athletes.
+          </p>
         </div>
 
         <div className="auth-card">
@@ -98,8 +100,8 @@ function Register() {
             <h1>Join PlaySense</h1>
 
             <p>
-              Create your account and start tracking your
-              performance.
+              Create your account and start tracking
+              your performance.
             </p>
           </div>
 
@@ -126,6 +128,7 @@ function Register() {
                 value={formData.name}
                 onChange={handleChange}
                 autoComplete="name"
+                disabled={loading}
               />
             </div>
 
@@ -142,6 +145,7 @@ function Register() {
                 value={formData.email}
                 onChange={handleChange}
                 autoComplete="email"
+                disabled={loading}
               />
             </div>
 
@@ -158,6 +162,7 @@ function Register() {
                 value={formData.password}
                 onChange={handleChange}
                 autoComplete="new-password"
+                disabled={loading}
               />
             </div>
 
@@ -174,6 +179,7 @@ function Register() {
                 value={formData.confirmPassword}
                 onChange={handleChange}
                 autoComplete="new-password"
+                disabled={loading}
               />
             </div>
 
@@ -189,7 +195,9 @@ function Register() {
           </form>
 
           <div className="auth-footer">
-            <span>Already have an account?</span>
+            <span>
+              Already have an account?
+            </span>
 
             <Link to="/login">
               Login

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
-import { apiPost } from "../utils/api";
+import { apiPostPublic } from "../utils/api";
 
 function Login() {
   const navigate = useNavigate();
@@ -36,20 +36,28 @@ function Login() {
     try {
       setLoading(true);
 
-      const data = await apiPost(
+      const data = await apiPostPublic(
         "/auth/login",
         formData
       );
+
+      if (!data?.token) {
+        throw new Error(
+          "Login succeeded but no authentication token was returned."
+        );
+      }
 
       localStorage.setItem(
         "playsense_token",
         data.token
       );
 
-      localStorage.setItem(
-        "playsense_user",
-        JSON.stringify(data.user)
-      );
+      if (data.user) {
+        localStorage.setItem(
+          "playsense_user",
+          JSON.stringify(data.user)
+        );
+      }
 
       navigate("/dashboard");
     } catch (loginError) {
@@ -75,7 +83,9 @@ function Login() {
             PlaySense
           </Link>
 
-          <p>Performance intelligence for athletes.</p>
+          <p>
+            Performance intelligence for athletes.
+          </p>
         </div>
 
         <div className="auth-card">
@@ -115,6 +125,7 @@ function Login() {
                 value={formData.email}
                 onChange={handleChange}
                 autoComplete="email"
+                disabled={loading}
               />
             </div>
 
@@ -131,6 +142,7 @@ function Login() {
                 value={formData.password}
                 onChange={handleChange}
                 autoComplete="current-password"
+                disabled={loading}
               />
             </div>
 
